@@ -686,8 +686,6 @@ RELEASE_ALL:
     clReleaseCommandQueue(cmd_queue);
     clReleaseMemObject(buf_gi_pixels);
     clReleaseMemObject(buf_usi_pixels);
-
-RELEASE_KERNEL:
     clReleaseKernel(kernel);
 // RELEASE_PROGRAM:
 //     clReleaseProgram(program);
@@ -799,8 +797,6 @@ RELEASE_ALL:
     clReleaseCommandQueue(cmd_queue);
     clReleaseMemObject(buf_gi_pixels);
     clReleaseMemObject(buf_usi_pixels);
-
-RELEASE_KERNEL:
     clReleaseKernel(kernel);
 
     return gi;
@@ -905,8 +901,6 @@ RELEASE_ALL:
     clReleaseCommandQueue(cmd_queue);
     clReleaseMemObject(buf_gi_pixels);
     clReleaseMemObject(buf_usi_pixels);
-
-RELEASE_KERNEL:
     clReleaseKernel(kernel);
 
     return gi;
