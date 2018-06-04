@@ -1,3 +1,62 @@
+
+typedef enum {BORDER_REFLECT} border_t;
+/**
+ * @brief 
+ * 
+ * @param usi 
+ * @param left column index of the top-left pixel of the patch
+ * @param top row index of the top-left pixel of the patch
+ * @param patch 
+ * @param w 
+ * @param h 
+ * @param border_type 
+ * @return int 
+ * 
+ * @attention currently, border width mustn't exceed 1, and patch mustn't be larger than usi
+ */
+inline int usi_get_patch(float *usi_pixels, int line_cnt, int spl, 
+                            int left, int top, 
+                            float *patch, int w, int h, 
+                            border_t border_type)
+{
+    // size limit
+    if(w < 0 || h < 0 || w > line_cnt || h > spl)
+        return -1;
+    // border limit
+    if(left < -1 || top < -1 || left + w - 1 > line_cnt || top + h -1 > spl)
+        return -1;
+    
+    if(border_type == BORDER_REFLECT)
+    {
+        int x, y;
+        // int c;    
+        for(int i = 0; i < h; ++i)
+        {
+            y = top + i;
+            // c = y < 0;
+            // y = c * (-y - 1) + (!c) * y;
+            // c = y > spl - 1;
+            // y = c * (2*spl - y - 1) + (!c) * y;
+            y = y < 0 ? -y-1 : y;
+            y = y > spl - 1 ? 2*spl - y - 1 : y;
+            for(int j = 0; j < w; ++j)
+            {
+                x = left + j;
+                // c = x < 0;
+                // x = c * (-x -1) + (!c) * x;
+                // c = x > line_cnt - 1;
+                // x = c * (2*line_cnt - x - 1) + (!c) * x;
+                x = x < 0 ? -x -1 : x;
+                x = x > line_cnt - 1 ? 2*line_cnt - x - 1 : x;
+                patch[i*w + j] = usi_pixels[y*line_cnt + x]; 
+            }
+        } 
+    }
+    return 0;
+}
+
+
+
 __kernel void nearest(__global float *usi_pixels,    
                             float radius, float angle,  
                             int spl, int line_cnt, 
@@ -155,12 +214,13 @@ __kernel void bicubic(__global float *usi_pixels,
         f[1][0] = usi_pixels[(q+1)*line_cnt + p];
         f[1][1] = usi_pixels[(q+1)*line_cnt + (p+1)];
         
-        if(q > 0 && q < spl - 1 && p > 0 && p < line_cnt -1)
+        // if(q > 0 && q < spl - 1 && p > 0 && p < line_cnt -1)
         {
             float f_4x4[4][4];
-            for(int t = 0; t < 4; ++t)
-                for(int s = 0; s < 4; ++s)
-                    f_4x4[t][s] = usi_pixels[(q-1+t)*line_cnt + (p-1+s)];
+            // for(int t = 0; t < 4; ++t)
+            //     for(int s = 0; s < 4; ++s)
+            //         f_4x4[t][s] = usi_pixels[(q-1+t)*line_cnt + (p-1+s)];
+            usi_get_patch(usi_pixels, line_cnt, spl, p-1, q-1, f_4x4, 4, 4, BORDER_REFLECT);
 
             for(int t = 0; t < 2; ++t)
                 for(int s = 0; s < 2; ++s)
