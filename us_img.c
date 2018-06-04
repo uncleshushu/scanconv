@@ -132,6 +132,51 @@ GrayImage *usi2gi(const USImage *usi)
     return gi;
 }
 
+typedef enum {BORDER_REFLECT} border_t;
+/**
+ * @brief 
+ * 
+ * @param usi 
+ * @param left column index of the top-left pixel of the patch
+ * @param top row index of the top-left pixel of the patch
+ * @param patch 
+ * @param w 
+ * @param h 
+ * @param border_type 
+ * @return int 
+ * 
+ * @attention currently, border width mustn't exceed 1, and patch mustn't be larger than usi
+ */
+static int usi_get_patch(const USImage *usi, int left, int top, float *patch, int w, int h, border_t border_type)
+{
+    // size limit
+    assert(w > 0 && h > 0 && w <= usi->line_cnt && h <= usi->spl);
+    // border limit
+    assert(left >= -1 && top >= -1 && left + w - 1 <= usi->line_cnt && top + h -1 <= usi->spl);
+    switch(border_type)
+    {
+        case BORDER_REFLECT:    
+            int x, y;    
+            for(int i = 0; i < h; ++h)
+            {
+                y = top + i;
+                y = y < 0 ? -y-1 : y;
+                y = y > usi->spl - 1 ? 2*usi->spl - y - 1 : y;
+                for(int j = 0; j < w; ++j)
+                {
+                    x = left + j;
+                    x = x < 0 ? -x -1 : x;
+                    x = x > usi->line_cnt - 1 ? 2*usi->line_cnt - x - 1 : x;
+                    patch[i*w + j] = usi->pixels[y*usi->line_cnt + x]; 
+                }
+            } 
+            break;
+        default:
+            return -1;
+    }
+    return 0;
+}
+
 GrayImage *usi_itp_nearest(const USImage *usi)
 {
 #ifdef TIMING
