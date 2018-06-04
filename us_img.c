@@ -273,6 +273,92 @@ GrayImage *usi_itp_bilinear(const USImage *usi)
     return gi;
 }
 
+/**
+ * @brief Linear interpolation in each column and cubic interpolation in each row, using OpenCL 
+ * 
+ * @param usi 
+ * @return GrayImage* 
+ */
+GrayImage *usi_itp_col_linear_row_cubic_ocl(const USImage *usi)
+{
+#ifdef TIMING
+    clock_t start = clock();
+#endif    
+    float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
+    float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
+    float R = usi->radius + usi->depth;
+    float real_h = R - usi->radius * cosf(usi->angle);
+    float real_w = 2 * R * sinf(usi->angle);
+    float center2top = usi->radius * cosf(usi->angle);
+    
+    GrayImage *gi = malloc(sizeof (GrayImage));
+    gi->height = (int)ceilf(usi->spl * real_h / usi->depth);  /* uses the same sampling interval */
+    gi->width = (int)ceilf(gi->height * real_w / real_h);
+    /* allocates memory and sets all bits to 0 */
+    gi->pixels = calloc(gi->width * gi->height, sizeof (char));
+
+    /* backward map */
+    for(int i = 0; i < gi->height; ++i)
+    {
+        /* from top to bottom */
+        float real_y = center2top + i*s_interval;   /* real-world distance in y direction */
+        for(int j = 0; j < gi->width; ++j)
+        {
+            float real_x = j*s_interval - real_w/2; /* real-world distance in x direction */
+            float theta = atanf(real_x/real_y);
+            float rho = sqrtf(real_x * real_x + real_y * real_y);
+            if( theta >= -usi->angle && theta <= usi->angle 
+                && rho <= R && rho >= usi->radius)
+            {
+                float u = (theta + usi->angle) / a_interval;    /* column index */
+                float v = (rho - usi->radius) / s_interval;     /* row index */
+                int left = (int)u;
+                int right = left + 1;
+                int above = (int)v;
+                int below = above + 1;
+            #ifdef DEBUG
+                assert(left >= 0 && left < usi->line_cnt);
+                assert(right >= 0 && right < usi->line_cnt);
+                assert(above >= 0 && above < usi->spl);
+                assert(below >= 0 && below < usi->spl);
+            #endif
+                // float pixel_above_left = usi->pixels[left*usi->spl + above];
+                // float pixel_above_right = usi->pixels[right*usi->spl + above];
+                // float pixel_below_left = usi->pixels[left*usi->spl + below];
+                // float pixel_below_right = usi->pixels[right*usi->spl + below];
+
+                float pixel_above_left = usi->pixels[above*usi->line_cnt + left];
+                float pixel_above_right = usi->pixels[above*usi->line_cnt + right];
+                float pixel_below_left = usi->pixels[below*usi->line_cnt + left];
+                float pixel_below_right = usi->pixels[below*usi->line_cnt + right];
+
+                float pixel_above = (u - left)*pixel_above_right - (u - right)*pixel_above_left;
+                float pixel_below = (u - left)*pixel_below_right - (u - right)*pixel_below_left;  
+                // float pixel_bilinear = (in_i - below)*pixel_above - (in_i - above)*pixel_below;
+                float pixel_bilinear = (v - above)*pixel_below - (v - below)*pixel_above;
+                unsigned char pixel = (unsigned char)roundf(pixel_bilinear);
+
+                assert_pixel(pixel_above_left);
+                assert_pixel(pixel_above_right);
+                assert_pixel(pixel_below_left);
+                assert_pixel(pixel_below_right);
+                assert_pixel(pixel_above);
+                assert_pixel(pixel_below);
+                assert_pixel(pixel_bilinear);
+                assert_pixel((float)pixel);
+
+                gi->pixels[i*gi->width + j] = pixel;
+            }
+        }
+    }
+#ifdef TIMING
+    clock_t end = clock();
+    double dur = 1000.0*(end - start)/CLOCKS_PER_SEC;
+    printf("%s: CPU time used (per clock()): %.2f ms\n", __func__, dur);
+#endif
+    return gi;
+}
+
 static inline float dot(float a[], float b[], size_t n)
 {
     float sum = 0;
