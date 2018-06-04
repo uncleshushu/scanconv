@@ -1,0 +1,8 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#cmakedefine DEBUG  /* use cmake -DRELEASE=ON to undef */
+#cmakedefine TIMING /* use cmake -DTIMING=OFF to undef*/
+#cmakedefine USE_OPENCL
+
+#endif  /* CONFIG_H */
