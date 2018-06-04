@@ -147,7 +147,7 @@ typedef enum {BORDER_REFLECT} border_t;
  * 
  * @attention currently, border width mustn't exceed 1, and patch mustn't be larger than usi
  */
-static int usi_get_patch(const USImage *usi, int left, int top, float *patch, int w, int h, border_t border_type)
+static inline int usi_get_patch(const USImage *usi, int left, int top, float *patch, int w, int h, border_t border_type)
 {
     // size limit
     assert(w > 0 && h > 0 && w <= usi->line_cnt && h <= usi->spl);
@@ -157,7 +157,7 @@ static int usi_get_patch(const USImage *usi, int left, int top, float *patch, in
     {
         case BORDER_REFLECT:    
             int x, y;    
-            for(int i = 0; i < h; ++h)
+            for(int i = 0; i < h; ++i)
             {
                 y = top + i;
                 y = y < 0 ? -y-1 : y;
@@ -409,13 +409,19 @@ GrayImage *usi_itp_bicubic(const USImage *usi)
                 /*
                  * currently, for boader pixels, all derivatives are set to 0 
                  */
-                if(q > 0 && q < usi->spl - 1 && p > 0 && p < usi->line_cnt -1)
+                // if(q > 0 && q < usi->spl - 1 && p > 0 && p < usi->line_cnt -1)
                 {
                     float f_4x4[4][4];
                     // this should be replaced by a getter with border interplation, like `copyMakeBorder` in OpenCV
-                    for(int t = 0; t < 4; ++t)
-                        memcpy(f_4x4 + t, &usi->pixels[(q+t-1)*usi->line_cnt + (p-1)], 4*sizeof (float));
-
+                    // for(int t = 0; t < 4; ++t)
+                        // memcpy(f_4x4 + t, &usi->pixels[(q+t-1)*usi->line_cnt + (p-1)], 4*sizeof (float));
+                    if(0 > usi_get_patch(usi, p-1, q-1, f_4x4, 4, 4, BORDER_REFLECT))
+                    {
+                        DBG_PRINT("Failed to get a 4*4 patch at (%d, %d).\n", p-1, q-1);
+                        gi_free(gi);
+                        gi = NULL;
+                        return gi;
+                    }
                     for(int t = 0; t < 2; ++t)
                         for(int s = 0; s < 2; ++s)
                         {
