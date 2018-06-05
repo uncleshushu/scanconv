@@ -16,7 +16,7 @@ def psnr(img1, img2):
     PIXEL_MAX = 255.0
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
-imgs = dict.fromkeys(['bicubic', 'bicubic_ocl','bilinear_ocl', 'nearest_ocl'], None)
+imgs = dict.fromkeys(['bicubic', 'bicubic_ocl', 'col_linear_row_cubic_ocl', 'bilinear_ocl', 'nearest_ocl'], None)
 
 for k in imgs.keys():
     imgs[k] = mpimg.imread(k+'.png')
@@ -46,26 +46,18 @@ for i, (k, v) in enumerate(imgs.items()):
 
 fig_1.tight_layout()
 
+fig_2 = plt.figure('evaluation', figsize=(9, 9))
 
-fig_2 = plt.figure('evaluation', figsize=(12, 4))
-mse_plt = plt.subplot2grid((1, 3), (0, 0))
-mse_plt.set_title('MSE')
-mse_plt.bar(mses.keys(), mses.values(), alpha=0.8)
-for k,v in mses.items():    
-    mse_plt.text(k, v, '%.4f' % v, ha='center', va= 'bottom')
+measures = {'MSE': mses, 'PSNR': psnrs, 'SSIM': ssims}
+for i, (name, data) in enumerate(measures.items()):
+    ax = plt.subplot2grid((3, 1), (i, 0))
+    ax.set_title(name)
+    ax.barh(list(data.keys()), list(data.values()), alpha=0.8)
+    # ax.barh(range(len(data)), list(data.values()), alpha=0.8, tick_label=data.keys())
+    for k,v in data.items():    
+        ax.text(v, k, '%.3g' % v, ha='left', va= 'center')
 
-psnr_plt = plt.subplot2grid((1, 3), (0, 1))
-psnr_plt.set_title('PSNR')
-# psnr_plt.xlabel('method')
-psnr_plt.bar(psnrs.keys(), psnrs.values(), alpha=0.8)
-for k,v in psnrs.items():    
-    psnr_plt.text(k, v, '%.2f' % v, ha='center', va= 'bottom')
-
-ssim_plt = plt.subplot2grid((1, 3), (0, 2))
-ssim_plt.set_title('SSIM')
-ssim_plt.bar(ssims.keys(), ssims.values(), alpha=0.8)
-for k,v in ssims.items():    
-    ssim_plt.text(k, v, '%.2f' % v, ha='center', va= 'bottom')
+fig_2.tight_layout()
 
 # fig_1.show()
 # fig_2.show()
