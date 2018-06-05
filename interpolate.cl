@@ -56,6 +56,29 @@ inline int usi_get_patch(float *usi_pixels, int line_cnt, int spl,
 }
 
 
+inline float itp_linear(float y1, float y2, float dx)
+{
+    return (1.0f - dx) * y1 + dx * y2;
+}
+
+/**
+ * @brief 
+ * 
+ * @param y f(0) = y[1], f(1) = y[2], f'(0) = (y[2]-y[0])/2, f'(1) = (y[3]-y[1])/2
+ * @param dx 
+ * @return float 
+ */
+inline float itp_catmull_rom_spline(float y[4], float dx)
+{
+    float a[4];
+    a[3] = -0.5f * y[0] + 1.5f * y[1] - 1.5f * y[2] + 0.5f * y[3];
+    a[2] = y[0] - 2.5f * y[1] + 2.0f * y[2] - 0.5f * y[3]; 
+    a[1] = -0.5f * y[0] + 0.5f * y[2];
+    a[0] = y[1];
+    return fma(fma(fma(a[3], dx, a[2]), dx, a[1]), dx, a[0]);
+}
+
+
 
 __kernel void nearest(__global float *usi_pixels,    
                             float radius, float angle,  
@@ -257,5 +280,50 @@ __kernel void bicubic(__global float *usi_pixels,
         result = fmax(0.0f, result);
         result = fmin(255.0f, result); 
         gi_pixels[i*gi_width + j] = (unsigned char)round(result);
+    }
+}
+
+
+__kernel void col_linear_row_cubic(__global float *usi_pixels,    
+                            float radius, float angle,  
+                            int spl, int line_cnt, 
+                            float R, float center2top,
+                            float real_w, 
+                            float s_interval, float a_interval, 
+                            __global unsigned char *gi_pixels)
+{
+    size_t gi_height = get_global_size(0);
+    size_t gi_width = get_global_size(1);
+    size_t i = get_global_id(0);
+    size_t j = get_global_id(1);
+
+    float real_y = center2top + i*s_interval;
+    float real_x = j*s_interval - real_w/2;
+    float theta = atan(real_x/real_y);
+    float rho = sqrt(real_x * real_x + real_y * real_y);
+    if( theta >= -angle && theta <= angle 
+        && rho <= R && rho >= radius)
+    {
+        float u = (theta + angle) / a_interval;
+        float v = (rho - radius) / s_interval;
+        int p = (int) u;
+        int q = (int) v;
+        float dx = u - p;
+        float dy = v - q;
+
+        float f_2x4[2][4];
+        usi_get_patch(usi_pixels, line_cnt, spl, p-1, q-1, f_2x4, 4, 2, BORDER_REFLECT);
+        // linear interpolation in y direction
+        float lin_y[4];
+        for(int n = 0; n < 4; ++n)
+            lin_y[n] = itp_linear(f_2x4[0][n], f_2x4[1][n], dy);
+        
+        // cubic interpolation in x direction
+        float cub_x = itp_catmull_rom_spline(lin_y, dx);
+        cub_x = cub_x < 0.0f ? 0.0f : cub_x;
+        cub_x = cub_x > 255.0f ? 255.0f : cub_x;
+        // cub_x = fmax(0.0f, cub_x);
+        // cub_x = fmin(255.0f, cub_x); 
+        gi_pixels[i*gi_width + j] = (unsigned char) cub_x;
     }
 }

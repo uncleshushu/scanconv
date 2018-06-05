@@ -75,6 +75,14 @@ int main(int argc, char *argv[])
         goto ITP_FAILURE;
     }
 
+    itp_status = usi_itp_png(usi, "col_linear_row_cubic.png", usi_itp_col_linear_row_cubic);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do col-linear-row-cubic interpolation.\n ");
+        goto ITP_FAILURE;
+    }
+
 #ifdef USE_OPENCL
     OCLResrc ocl_resrc;
     if(usi_ocl_setup(&ocl_resrc) < 0)
@@ -101,11 +109,20 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Failed to do bilinear interpolation using OpenCL.\n ");
         goto OCL_ITP_FAILURE;
     }
+    
     itp_status = usi_itp_png_ocl(usi, "bicubic_ocl.png", usi_itp_bicubic_ocl, &ocl_resrc);
     if(itp_status < 0)
     {
         ret_val = EXIT_FAILURE;
         fprintf(stderr, "Failed to do bicubic interpolation using OpenCL.\n ");
+        goto OCL_ITP_FAILURE;
+    }
+
+    itp_status = usi_itp_png_ocl(usi, "col_linear_row_cubic_ocl.png", usi_itp_col_linear_row_cubic_ocl, &ocl_resrc);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do col-linear-row-cubic interpolation using OpenCL.\n ");
         goto OCL_ITP_FAILURE;
     }
 
