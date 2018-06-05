@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.0)
 project(usi_itp_ocl C)
 
 set(PROJECT_VERSION_MAJOR 1)
-set(PROJECT_VERSION_MINOR 3)
+set(PROJECT_VERSION_MINOR 2)
 set(PROJECT_VERSION_PATCH 0)
 
 set(CMAKE_C_STANDARD 99)
