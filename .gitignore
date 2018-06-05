@@ -3,6 +3,10 @@
 
 *.zip
 
+##### auto-generated configuration files #####
+config.h
+##############################################
+
 ###### MS-Office ######
 *.tmp
 
