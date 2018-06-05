@@ -48,7 +48,31 @@ OpenCL 怎么实现？
 
 1. 使用 local memory (work group) ，先将一个 work group 需要的数据读入到 local memory 。
 
+    如何确定合适的 group size:
+
+    - `clGetDeviceInfo` with `CL_DEVICE_LOCAL_MEM_SIZE` and `CL_DEVICE_MAX_WORK_ITEM_SIZES`
+    
+    - `clGetKernelWorkGroupInfo` with `CL_KERNEL_WORK_GROUP_SIZE` and `CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE`
+    
+    - always make sure `group_size` <= `CL_KERNEL_WORK_GROUP_SIZE` and `local_work_size[i]` <= `CL_DEVICE_MAX_WORK_ITEM_SIZES[i]` and    `group_size` * `local_mem_per_item` <= `CL_DEVICE_LOCAL_MEM_SIZE`
+     
+    - group sizes of multiples of `CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE` are preferred
+
 1. 对 global memory 访问的优化，如减少 bank-conflict 等。
+
+1. 使用 constant memory
+
+    >常量内存使用__constant标识进行描述，常量内存作为全局地址空间的一部分，在运行时可以分配出出相应的缓存空间，利用常量内存可以提高应用访存效率。使用常量地址空间的方式有两种：
+    >
+    >1. 可以通过数组创建的方式，之后将数组作为参数传入内核中。内核参数描述上，必须指定__constant为对应指针的标识符。
+    >
+    >1. 内核端声明常量对象，并使用__constant标识对其进行初始化，其属于编译时常量类型。
+    >
+    >不同架构下，常量内存对应的位置也不同。AMD GPU上常量数据将会保存在缓存上(保存通用数据)。该缓存比L1缓存的延迟还要低，并且能大大减少GPU内的数据传输。根据这种访存模式，其地址可能就直接保存在指令中，就算是释放功能单元也只有极低的寻址延迟。
+
+    >统一地址空间包括全局、局部和私有地址空间。2.0标准中，并未将常量地址划分到同一地址空间中。虽然，常量空间在逻辑上是全局便令的一部分，不过在某些处理器上(特别是图像处理器)，常量数据会映射到特定的硬件单元上，并不能使用指令对其进行动态指定。
+    
+    经测试，将 `M_inv[16][16]` 由 private memory 改为 constant memory 后，反而变慢了。
 
 #### kernel 内循环
 

@@ -147,6 +147,7 @@ __kernel void bilinear(__global float *usi_pixels,
     }
 }
 
+// inline float mydot(__constant float a[], const float b[], const size_t n)
 inline float mydot(const float a[], const float b[], const size_t n)
 {
     float sum = 0;
