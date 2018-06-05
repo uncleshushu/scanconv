@@ -48,6 +48,16 @@ OpenCL 怎么实现？
 
 1. 使用 local memory (work group) ，先将一个 work group 需要的数据读入到 local memory 。
 
+    如何确定合适的 group size:
+
+    - `clGetDeviceInfo` with `CL_DEVICE_LOCAL_MEM_SIZE` and `CL_DEVICE_MAX_WORK_ITEM_SIZES`
+    
+    - `clGetKernelWorkGroupInfo` with `CL_KERNEL_WORK_GROUP_SIZE` and `CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE`
+    
+    - always make sure `group_size` <= `CL_KERNEL_WORK_GROUP_SIZE` and `local_work_size[i]` <= `CL_DEVICE_MAX_WORK_ITEM_SIZES[i]` and    `group_size` * `local_mem_per_item` <= `CL_DEVICE_LOCAL_MEM_SIZE`
+     
+    - group sizes of multiples of `CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE` are preferred
+
 1. 对 global memory 访问的优化，如减少 bank-conflict 等。
 
 #### kernel 内循环
