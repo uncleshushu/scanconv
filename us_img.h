@@ -38,7 +38,7 @@ GrayImage *usi2gi(const USImage *usi);
 /* cubic interpolation */
 GrayImage *usi_itp_nearest(const USImage *usi);
 GrayImage *usi_itp_bilinear(const USImage *usi);
-GrayImage *usi_itp_bicubic_spline(const USImage *usi);
+GrayImage *usi_itp_bicubic_catmull_rom_spline(const USImage *usi);
 /**
  * @brief Linear interpolation in each column and cubic interpolation in each row 
  * 
@@ -69,7 +69,7 @@ GrayImage *usi_itp_nearest_ocl(const USImage *usi, const OCLResrc *ocl_resrc);
 GrayImage *usi_itp_nearest_ocl_img(const USImage *usi, const OCLResrc *ocl_resrc);
 GrayImage *usi_itp_bilinear_ocl(const USImage *usi, const OCLResrc *ocl_resrc);
 GrayImage *usi_itp_bicubic_ocl(const USImage *usi, const OCLResrc *ocl_resrc);
-GrayImage *usi_itp_bicubic_spline_ocl(const USImage *usi, const OCLResrc *ocl_resrc);
+GrayImage *usi_itp_bicubic_catmull_rom_spline_ocl(const USImage *usi, const OCLResrc *ocl_resrc);
 /**
  * @brief Linear interpolation in each column and cubic interpolation in each row, using OpenCL 
  * 

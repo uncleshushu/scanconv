@@ -67,6 +67,22 @@ int main(int argc, char *argv[])
         goto ITP_FAILURE;
     }
 
+    itp_status = usi_itp_png(usi, "col_linear_row_cubic.png", usi_itp_col_linear_row_cubic);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do col-linear-row-cubic interpolation.\n ");
+        goto ITP_FAILURE;
+    }
+
+    itp_status = usi_itp_png(usi, "bicubic_catmull_rom_spline.png", usi_itp_bicubic_catmull_rom_spline);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do bicubic Catmull-Rom spline interpolation.\n ");
+        goto ITP_FAILURE;
+    }
+
     itp_status = usi_itp_png(usi, "bicubic.png", usi_itp_bicubic);
     if(itp_status < 0)
     {
@@ -75,13 +91,6 @@ int main(int argc, char *argv[])
         goto ITP_FAILURE;
     }
 
-    itp_status = usi_itp_png(usi, "col_linear_row_cubic.png", usi_itp_col_linear_row_cubic);
-    if(itp_status < 0)
-    {
-        ret_val = EXIT_FAILURE;
-        fprintf(stderr, "Failed to do col-linear-row-cubic interpolation.\n ");
-        goto ITP_FAILURE;
-    }
 
 #ifdef USE_OPENCL
     OCLResrc ocl_resrc;
@@ -110,14 +119,6 @@ int main(int argc, char *argv[])
         goto OCL_ITP_FAILURE;
     }
     
-    itp_status = usi_itp_png_ocl(usi, "bicubic_ocl.png", usi_itp_bicubic_ocl, &ocl_resrc);
-    if(itp_status < 0)
-    {
-        ret_val = EXIT_FAILURE;
-        fprintf(stderr, "Failed to do bicubic interpolation using OpenCL.\n ");
-        goto OCL_ITP_FAILURE;
-    }
-
     itp_status = usi_itp_png_ocl(usi, "col_linear_row_cubic_ocl.png", usi_itp_col_linear_row_cubic_ocl, &ocl_resrc);
     if(itp_status < 0)
     {
@@ -125,6 +126,23 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Failed to do col-linear-row-cubic interpolation using OpenCL.\n ");
         goto OCL_ITP_FAILURE;
     }
+
+    itp_status = usi_itp_png_ocl(usi, "bicubic_catmull_rom_spline_ocl.png", usi_itp_bicubic_catmull_rom_spline_ocl, &ocl_resrc);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do bicubic Catmull-Rom spline interpolation using OpenCL.\n ");
+        goto OCL_ITP_FAILURE;
+    }
+
+    itp_status = usi_itp_png_ocl(usi, "bicubic_ocl.png", usi_itp_bicubic_ocl, &ocl_resrc);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do bicubic interpolation using OpenCL.\n ");
+        goto OCL_ITP_FAILURE;
+    }
+    
 
 OCL_ITP_FAILURE:
     usi_ocl_release(&ocl_resrc);

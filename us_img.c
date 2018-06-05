@@ -396,6 +396,75 @@ GrayImage *usi_itp_col_linear_row_cubic(const USImage *usi)
     return gi;
 }
 
+GrayImage *usi_itp_bicubic_catmull_rom_spline(const USImage *usi)
+{
+    #ifdef TIMING
+    clock_t start = clock();
+#endif    
+    float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
+    float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
+    float R = usi->radius + usi->depth;
+    float real_h = R - usi->radius * cosf(usi->angle);
+    float real_w = 2 * R * sinf(usi->angle);
+    float center2top = usi->radius * cosf(usi->angle);
+
+    
+    GrayImage *gi = malloc(sizeof (GrayImage));
+    gi->height = (int)ceilf(usi->spl * real_h / usi->depth);  /* uses the same sampling interval */
+    gi->width = (int)ceilf(gi->height * real_w / real_h);
+    /* allocates memory and sets all bits to 0 */
+    gi->pixels = calloc(gi->width * gi->height, sizeof (char));
+
+    /* backward map */
+    for(int i = 0; i < gi->height; ++i)
+    {
+        /* from top to bottom */
+        float real_y = center2top + i*s_interval;   /* real-world distance in y direction */
+        for(int j = 0; j < gi->width; ++j)
+        {
+            float real_x = j*s_interval - real_w/2; /* real-world distance in x direction */
+            float theta = atanf(real_x/real_y);
+            float rho = sqrtf(real_x * real_x + real_y * real_y);
+            if( theta >= -usi->angle && theta <= usi->angle 
+                && rho <= R && rho >= usi->radius)
+            {
+                float u = (theta + usi->angle) / a_interval;    /* column index */
+                float v = (rho - usi->radius) / s_interval;     /* row index */
+                int p = (int) u;
+                int q = (int) v;
+                float dx = u - p;
+                float dy = v - q;
+
+                float f_4x4[4][4];
+                if(0 > usi_get_patch(usi, p-1, q-1, f_4x4, 4, 4, BORDER_REFLECT))
+                {
+                    DBG_PRINT("Failed to get a 4*4 patch at (%d, %d).\n", p-1, q-1);
+                    gi_free(gi);
+                    gi = NULL;
+                    return gi;
+                }                
+                
+                // Catmull-Rom spline interpolation in x direction
+                float cub_x[4];
+                for(int n = 0; n < 4; ++n)
+                    cub_x[n] = itp_catmull_rom_spline(f_4x4[n], dx);
+                
+                // Catmull-Rom spline interpolation in y direction
+                float cub_y = itp_catmull_rom_spline(cub_x, dy);
+                cub_y = cub_y < 0.0f ? 0.0f : cub_y;
+                cub_y = cub_y > 255.0f ? 255.0f : cub_y;
+
+                gi->pixels[i*gi->width + j] = (unsigned char) cub_y;
+            }
+        }
+    }
+#ifdef TIMING
+    clock_t end = clock();
+    double dur = 1000.0*(end - start)/CLOCKS_PER_SEC;
+    printf("%s: CPU time used (per clock()): %.2f ms\n", __func__, dur);
+#endif
+    return gi;
+}
 
 static inline float dot(float a[], float b[], size_t n)
 {
@@ -998,6 +1067,110 @@ GrayImage *usi_itp_col_linear_row_cubic_ocl(const USImage *usi, const OCLResrc *
     cl_int status;
     
     cl_kernel kernel = clCreateKernel(ocl_resrc->program, "col_linear_row_cubic", &status);
+	if (status != CL_SUCCESS)
+	{
+		DBG_PRINT("clCreateKernel failed, error code: %d\n", status);
+		return NULL;
+	}
+    
+    
+    float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
+    float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
+    float R = usi->radius + usi->depth;
+    float real_h = R - usi->radius * cosf(usi->angle);
+    float real_w = 2 * R * sinf(usi->angle);
+    float center2top = usi->radius * cosf(usi->angle);
+    
+    gi = malloc(sizeof (GrayImage));
+    gi->height = (int)ceilf(usi->spl * real_h / usi->depth);  /* uses the same sampling interval */
+    gi->width = (int)ceilf(gi->height * real_w / real_h);
+    /* allocates memory and sets all bits to 0 */
+    gi->pixels = calloc(gi->width * gi->height, sizeof (char));
+
+    cl_mem buf_usi_pixels = clCreateBuffer(ocl_resrc->context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * usi->spl*usi->line_cnt, usi->pixels, &status);
+    cl_mem buf_gi_pixels = clCreateBuffer(ocl_resrc->context, CL_MEM_WRITE_ONLY, sizeof(char) * gi->height*gi->width, NULL, &status);
+
+    
+    status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&buf_usi_pixels);
+    status = clSetKernelArg(kernel, 1, sizeof(float), (void *)&usi->radius);
+    status = clSetKernelArg(kernel, 2, sizeof(float), (void *)&usi->angle);
+    status = clSetKernelArg(kernel, 3, sizeof(int), (void *)&usi->spl);
+    status = clSetKernelArg(kernel, 4, sizeof(int), (void *)&usi->line_cnt);
+    status = clSetKernelArg(kernel, 5, sizeof(float), (void *)&R);
+    status = clSetKernelArg(kernel, 6, sizeof(float), (void *)&center2top);
+    status = clSetKernelArg(kernel, 7, sizeof(float), (void *)&real_w);
+    status = clSetKernelArg(kernel, 8, sizeof(float), (void *)&s_interval);
+    status = clSetKernelArg(kernel, 9, sizeof(float), (void *)&a_interval);
+    status = clSetKernelArg(kernel, 10, sizeof(cl_mem), (void *)&buf_gi_pixels);
+
+    // Define an index space of work-items for execution.
+	// A work-group size is not required, but can be used.
+	size_t global_size[2] = {gi->height, gi->width}, local_size[1];
+    // global_id range should equal to the length of subsums
+	
+    // number-of-groups: global_size / local_size
+	// work_group_size[0] = 256;
+
+#ifdef TIMING	
+    cl_queue_properties queue_props[] = { CL_QUEUE_PROPERTIES,
+                                    CL_QUEUE_PROFILING_ENABLE,
+                                    0
+                                };
+    cl_command_queue cmd_queue = clCreateCommandQueueWithProperties(ocl_resrc->context, ocl_resrc->devices[0], queue_props, &status);
+    cl_event kernel_event;
+	status = clEnqueueNDRangeKernel(cmd_queue, kernel, 2, NULL,
+		global_size, NULL, 0, NULL, &kernel_event);
+#else
+    cl_command_queue cmd_queue = clCreateCommandQueueWithProperties(ocl_resrc->context, ocl_resrc->devices[0], NULL, &status);
+    status = clEnqueueNDRangeKernel(cmd_queue, kernel, 2, NULL,
+		global_size, NULL, 0, NULL, NULL);
+#endif TIMING
+
+    if(status != CL_SUCCESS)
+	{
+		DBG_PRINT("Failed to run the kernel, error code: %d\n", status);
+		gi_free(gi);
+        gi = NULL;
+		goto RELEASE_ALL;
+	}
+
+#ifdef TIMING
+    // profiles kernel execution
+    clWaitForEvents(1, &kernel_event);    // wait for the kernel to be finished     
+    cl_ulong kernel_exec_time = ocl_get_cmd_exec_time(kernel_event);
+    clReleaseEvent(kernel_event);
+
+    printf("%s: kernel execution time: %.2f ms\n", __func__, kernel_exec_time * 1e-6);
+#endif
+
+	// Read the device output buffer to the host output array
+	status = clEnqueueReadBuffer(cmd_queue, buf_gi_pixels, CL_TRUE, 0,
+		sizeof(char) * gi->height*gi->width, gi->pixels, 0, NULL, NULL);
+
+    if(status != CL_SUCCESS)
+	{
+		DBG_PRINT("Failed to run the kernel, error code: %d\n", status);
+		gi_free(gi);
+        gi = NULL;
+		goto RELEASE_ALL;
+	}
+
+RELEASE_ALL:
+    clReleaseCommandQueue(cmd_queue);
+    clReleaseMemObject(buf_gi_pixels);
+    clReleaseMemObject(buf_usi_pixels);
+    clReleaseKernel(kernel);
+
+    return gi;
+}
+
+GrayImage *usi_itp_bicubic_catmull_rom_spline_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
+{
+        GrayImage *gi = NULL;
+    
+    cl_int status;
+    
+    cl_kernel kernel = clCreateKernel(ocl_resrc->program, "bicubic_catmull_rom_spline", &status);
 	if (status != CL_SUCCESS)
 	{
 		DBG_PRINT("clCreateKernel failed, error code: %d\n", status);

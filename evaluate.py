@@ -16,7 +16,7 @@ def psnr(img1, img2):
     PIXEL_MAX = 255.0
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
-imgs = dict.fromkeys(['bicubic', 'bicubic_ocl', 'col_linear_row_cubic_ocl', 'bilinear_ocl', 'nearest_ocl'], None)
+imgs = dict.fromkeys(['bicubic', 'bicubic_ocl', 'bicubic_catmull_rom_spline','col_linear_row_cubic_ocl', 'bilinear_ocl', 'nearest_ocl'], None)
 
 for k in imgs.keys():
     imgs[k] = mpimg.imread(k+'.png')

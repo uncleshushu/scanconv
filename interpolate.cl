@@ -327,3 +327,48 @@ __kernel void col_linear_row_cubic(__global float *usi_pixels,
         gi_pixels[i*gi_width + j] = (unsigned char) cub_x;
     }
 }
+
+__kernel void bicubic_catmull_rom_spline(__global float *usi_pixels,    
+                            float radius, float angle,  
+                            int spl, int line_cnt, 
+                            float R, float center2top,
+                            float real_w, 
+                            float s_interval, float a_interval, 
+                            __global unsigned char *gi_pixels)
+{
+    size_t gi_height = get_global_size(0);
+    size_t gi_width = get_global_size(1);
+    size_t i = get_global_id(0);
+    size_t j = get_global_id(1);
+
+    float real_y = center2top + i*s_interval;
+    float real_x = j*s_interval - real_w/2;
+    float theta = atan(real_x/real_y);
+    float rho = sqrt(real_x * real_x + real_y * real_y);
+    if( theta >= -angle && theta <= angle 
+        && rho <= R && rho >= radius)
+    {
+        float u = (theta + angle) / a_interval;
+        float v = (rho - radius) / s_interval;
+        int p = (int) u;
+        int q = (int) v;
+        float dx = u - p;
+        float dy = v - q;
+
+        float f_4x4[4][4];
+        usi_get_patch(usi_pixels, line_cnt, spl, p-1, q-1, f_4x4, 4, 4, BORDER_REFLECT);
+        
+        // Catmull-Rom spline interpolation in x direction
+        float cub_x[4];
+        for(int n = 0; n < 4; ++n)
+            cub_x[n] = itp_catmull_rom_spline(f_4x4[n], dx);
+        
+        // Catmull-Rom spline interpolation in y direction
+        float cub_y = itp_catmull_rom_spline(cub_x, dy);
+        cub_y = cub_y < 0.0f ? 0.0f : cub_y;
+        cub_y = cub_y > 255.0f ? 255.0f : cub_y;
+        // cub_y = fmax(0.0f, cub_y);
+        // cub_y = fmin(255.0f, cub_y); 
+        gi_pixels[i*gi_width + j] = (unsigned char) cub_y;
+    }
+}
