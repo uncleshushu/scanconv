@@ -1,7 +1,12 @@
 # cmake build directories
 **/build*
 
+###### project submission files ######
+答辩.jpg
 *.zip
+*.doc*
+*.ppt*
+##############################
 
 ##### auto-generated configuration files #####
 config.h
