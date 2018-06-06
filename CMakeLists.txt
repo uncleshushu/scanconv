@@ -24,22 +24,9 @@ if(USE_OPENCL)
     include_directories(PUBLIC ${OpenCL_INCLUDE_DIRS})  # set include directories for all targets
 endif(USE_OPENCL)
 
+
 if(${CMAKE_GENERATOR} MATCHES "Visual Studio")
     add_compile_options(/wd4996)
-    if(DEBUG)
-        file(COPY image.dat DESTINATION "${CMAKE_BINARY_DIR}/Debug")
-        file(COPY interpolate.cl DESTINATION "${CMAKE_BINARY_DIR}/Debug")
-        file(COPY evaluate.py DESTINATION "${CMAKE_BINARY_DIR}/Debug")
-    endif(DEBUG)
-    if(RELEASE)
-        file(COPY image.dat DESTINATION "${CMAKE_BINARY_DIR}/Release")
-        file(COPY interpolate.cl DESTINATION "${CMAKE_BINARY_DIR}/Release")
-        file(COPY evaluate.py DESTINATION "${CMAKE_BINARY_DIR}/Release")
-    endif(RELEASE)
-else()
-    file(COPY image.dat DESTINATION ${CMAKE_BINARY_DIR})
-    file(COPY interpolate.cl DESTINATION ${CMAKE_BINARY_DIR})
-    file(COPY evaluate.py DESTINATION ${CMAKE_BINARY_DIR})
 endif()
 
 add_executable(${PROJECT_NAME} main.c us_img.c)     # set the target
@@ -52,5 +39,28 @@ if(UNIX)
     target_link_libraries(${PROJECT_NAME} m)
 endif(UNIX)
 
+set(files2copy
+    image.dat
+    interpolate.cl
+    evaluate.py
+    profile.py)
+
+if(${CMAKE_GENERATOR} MATCHES "Visual Studio")
+    add_compile_options(/wd4996)
+    if(DEBUG)
+        foreach(f ${files2copy})
+            file(COPY ${f} DESTINATION "${CMAKE_BINARY_DIR}/Debug")
+        endforeach(f)
+    endif(DEBUG)
+    if(RELEASE)
+        foreach(f ${files2copy})
+            file(COPY ${f} DESTINATION "${CMAKE_BINARY_DIR}/Release")
+        endforeach(f)
+    endif(RELEASE)
+else()
+    foreach(f ${files2copy})
+        file(COPY ${f} DESTINATION ${CMAKE_BINARY_DIR})
+    endforeach(f)
+endif()
 
 
