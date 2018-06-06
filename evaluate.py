@@ -35,7 +35,7 @@ print("MSE:", mses)
 print("PSNR:", psnrs)
 print("SSIM", ssims)
 
-fig_1 = plt.figure('results', figsize=(15, 9))
+fig_1 = plt.figure('results', figsize=(15, 7))
 
 row_cnt = math.ceil(len(imgs)/3.0)
 for i, (k, v) in enumerate(imgs.items()):
@@ -46,7 +46,7 @@ for i, (k, v) in enumerate(imgs.items()):
 
 fig_1.tight_layout()
 
-fig_2 = plt.figure('evaluation', figsize=(9, 9))
+fig_2 = plt.figure('evaluation', figsize=(9, 7))
 
 measures = {'MSE': mses, 'PSNR': psnrs, 'SSIM': ssims}
 for i, (name, data) in enumerate(measures.items()):

@@ -4,6 +4,7 @@ import subprocess
 import re
 import csv
 import matplotlib.pyplot as plt
+import numpy as np
 
 EXE_NAME = "usi_itp_ocl"
 USI_NAME = "image.dat"
@@ -44,18 +45,19 @@ with open('benchmark.csv','w', newline='') as f:
                                 '%.2f' % acc_ratio[method_cpu]])
 print(acc_ratio)
 
-plt.figure('evaluation', figsize=(9, 9))
+plt.figure('evaluation', figsize=(9, 7))
 
 measures = {'CPU': cpu_time, 'OpenCL GPU': ocl_time, 'Accelerate Ratio': acc_ratio}
 for i, (name, data) in enumerate(measures.items()):
     ax = plt.subplot2grid((3, 1), (i, 0))
     ax.set_title(name)
     color = 'r' if name == 'Accelerate Ratio' else None
-    ax.barh(list(data.keys()), list(data.values()), color=color, alpha=0.8)
-    # ax.barh(range(len(data)), list(data.values()), alpha=0.8, tick_label=data.keys())
+    ax.barh(list(data.keys()), list(data.values()), color=color, alpha=0.6)
+    # xpos = np.arange(len(data))
+    # ax.barh(xpos, list(data.values()), color=color, alpha=0.6)
+    # plt.yticks(xpos, list(data.keys()))
     for k,v in data.items():
         ax.text(v, k, '%.2f' % v, ha='left', va= 'center')
 
 plt.tight_layout()
 plt.show()
-    
