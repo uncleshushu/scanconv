@@ -75,6 +75,30 @@ int main(int argc, char *argv[])
         goto ITP_FAILURE;
     }
 
+    itp_status = usi_itp_png(usi, "row_cubic_col_linear.png", usi_itp_row_cubic_col_linear);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do row-cubic-col-linear interpolation.\n ");
+        goto ITP_FAILURE;
+    }
+
+    itp_status = usi_itp_png(usi, "col_cubic_row_linear.png", usi_itp_col_cubic_row_linear);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do col-cubic-row-linear interpolation.\n ");
+        goto ITP_FAILURE;
+    }
+
+    itp_status = usi_itp_png(usi, "row_linear_col_cubic.png", usi_itp_row_linear_col_cubic);
+    if(itp_status < 0)
+    {
+        ret_val = EXIT_FAILURE;
+        fprintf(stderr, "Failed to do row-linear-col-cubic interpolation.\n ");
+        goto ITP_FAILURE;
+    }
+
     itp_status = usi_itp_png(usi, "bicubic_catmull_rom_spline.png", usi_itp_bicubic_catmull_rom_spline);
     if(itp_status < 0)
     {

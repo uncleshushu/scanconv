@@ -40,12 +40,34 @@ GrayImage *usi_itp_nearest(const USImage *usi);
 GrayImage *usi_itp_bilinear(const USImage *usi);
 GrayImage *usi_itp_bicubic_catmull_rom_spline(const USImage *usi);
 /**
- * @brief Linear interpolation in each column and cubic interpolation in each row 
+ * @brief Linear interpolation in each column first, then cubic interpolation in each row 
  * 
  * @param usi 
  * @return GrayImage* 
  */
 GrayImage *usi_itp_col_linear_row_cubic(const USImage *usi);
+/**
+ * @brief Cubic interpolation in each row first, then linear interpolation in each column
+ * 
+ * @param usi 
+ * @return GrayImage* 
+ */
+GrayImage *usi_itp_row_cubic_col_linear(const USImage *usi);
+/**
+ * @brief Cubic interpolation in each column first, then linear interpolation in each row 
+ * 
+ * @param usi 
+ * @return GrayImage* 
+ */
+GrayImage *usi_itp_col_cubic_row_linear(const USImage *usi);
+/**
+ * @brief Linear interpolation in each row first, then cubic interpolation in each column
+ * 
+ * @param usi 
+ * @return GrayImage* 
+ */
+GrayImage *usi_itp_row_linear_col_cubic(const USImage *usi);
+
 GrayImage *usi_itp_bicubic_conv(const USImage *usi);
 GrayImage *usi_itp_bicubic(const USImage *usi);
 

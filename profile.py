@@ -10,7 +10,7 @@ EXE_NAME = "usi_itp_ocl"
 USI_NAME = "image.dat"
 
 cpu_time_pat = re.compile(r'(\w+):.*CPU\D*([1-9]\d*\.\d*|0\.\d*)')
-ocl_time_pat = re.compile(r'(\w+ocl)\D*([1-9]\d*\.\d*|0\.\d*)')
+ocl_time_pat = re.compile(r'(\w+ocl):.*kernel\D*([1-9]\d*\.\d*|0\.\d*)')
 
 cpu_time = {}
 ocl_time = {}
@@ -45,13 +45,17 @@ with open('benchmark.csv','w', newline='') as f:
                                 '%.2f' % acc_ratio[method_cpu]])
 print(acc_ratio)
 
-plt.figure('evaluation', figsize=(9, 7))
+plt.figure('benchmark', figsize=(9, 7))
 
-measures = {'CPU': cpu_time, 'OpenCL GPU': ocl_time, 'Accelerate Ratio': acc_ratio}
+measures = {'CPU': cpu_time, 'OpenCL GPU': ocl_time, 'Speedup': acc_ratio}
 for i, (name, data) in enumerate(measures.items()):
     ax = plt.subplot2grid((3, 1), (i, 0))
     ax.set_title(name)
-    color = 'r' if name == 'Accelerate Ratio' else None
+    if name == 'CPU':
+        plt.xlabel('cpu time (ms)')
+    if name == 'OpenCL GPU':
+        plt.xlabel('kernel execution time (ms)')
+    color = 'r' if name == 'Speedup' else None
     ax.barh(list(data.keys()), list(data.values()), color=color, alpha=0.6)
     # xpos = np.arange(len(data))
     # ax.barh(xpos, list(data.values()), color=color, alpha=0.6)

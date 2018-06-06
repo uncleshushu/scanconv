@@ -5,8 +5,8 @@ set(PROJECT_VERSION_MAJOR 1)
 set(PROJECT_VERSION_MINOR 3)
 set(PROJECT_VERSION_PATCH 0)
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED on)   # requires C99
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED on)   # requires C11
 
 option(DEBUG "Debug version" ON)
 option(RELEASE "Release version" OFF)
@@ -43,10 +43,10 @@ set(files2copy
     image.dat
     interpolate.cl
     evaluate.py
+    evaluate_cpu.py
     profile.py)
 
 if(${CMAKE_GENERATOR} MATCHES "Visual Studio")
-    add_compile_options(/wd4996)
     if(DEBUG)
         foreach(f ${files2copy})
             file(COPY ${f} DESTINATION "${CMAKE_BINARY_DIR}/Debug")

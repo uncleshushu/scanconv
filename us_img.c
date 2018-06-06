@@ -13,13 +13,34 @@
 
 #ifdef TIMING
 #include <time.h>
-#endif
+
+#define CPU_TIMING_START() \
+    clock_t _cpu_start, _cpu_end;   \
+    _cpu_start = clock();
+
+#define CPU_TIMING_END() \
+    _cpu_end = clock(); \
+    double _cpu_time = 1000.0*(_cpu_end - _cpu_start)/CLOCKS_PER_SEC;   \
+    printf("%s: CPU time used: %.2f ms\n", __func__, _cpu_time);
+
+#define WALL_TIMING_START() \
+    struct timespec _wall_start, _wall_end; \
+    timespec_get(&_wall_start, TIME_UTC);
+
+#define WALL_TIMING_END() \
+    timespec_get(&_wall_end, TIME_UTC); \
+    double _wall_time = 1000.0*(_wall_end.tv_sec - _wall_start.tv_sec) + 1e-6*(_wall_end.tv_nsec - _wall_start.tv_nsec);    \
+    printf("%s: Wall time used: %.2f ms\n", __func__, _wall_time);
+
+#endif /* TIMING */
+
 
 #ifdef DEBUG
 #define assert_pixel(pixel) if(!(pixel >= 0.0 && pixel <= 255.0)) {DBG_PRINT(#pixel" invalid: %f\n", pixel); exit(EXIT_FAILURE);}
 #else
 #define assert_pixel(pixel)
 #endif
+
 
 USImage *usi_load(const char *filename)
 {
@@ -202,7 +223,7 @@ static inline float itp_catmull_rom_spline(float y[4], float dx)
 GrayImage *usi_itp_nearest(const USImage *usi)
 {
 #ifdef TIMING
-    clock_t start = clock();
+    CPU_TIMING_START();
 #endif    
     float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
     float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
@@ -252,9 +273,7 @@ GrayImage *usi_itp_nearest(const USImage *usi)
         }
     }
 #ifdef TIMING
-    clock_t end = clock();
-    double dur = 1000.0*(end - start)/CLOCKS_PER_SEC;
-    printf("%s: CPU time used (per clock()): %.2f ms\n", __func__, dur);
+    CPU_TIMING_END();
 #endif
     return gi;
 }
@@ -262,7 +281,7 @@ GrayImage *usi_itp_nearest(const USImage *usi)
 GrayImage *usi_itp_bilinear(const USImage *usi)
 {
 #ifdef TIMING
-    clock_t start = clock();
+    CPU_TIMING_START();
 #endif    
     float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
     float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
@@ -313,9 +332,7 @@ GrayImage *usi_itp_bilinear(const USImage *usi)
         }
     }
 #ifdef TIMING
-    clock_t end = clock();
-    double dur = 1000.0*(end - start)/CLOCKS_PER_SEC;
-    printf("%s: CPU time used (per clock()): %.2f ms\n", __func__, dur);
+    CPU_TIMING_END();
 #endif
     return gi;
 }
@@ -329,7 +346,7 @@ GrayImage *usi_itp_bilinear(const USImage *usi)
 GrayImage *usi_itp_col_linear_row_cubic(const USImage *usi)
 {
 #ifdef TIMING
-    clock_t start = clock();
+    CPU_TIMING_START();
 #endif    
     float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
     float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
@@ -389,17 +406,243 @@ GrayImage *usi_itp_col_linear_row_cubic(const USImage *usi)
         }
     }
 #ifdef TIMING
-    clock_t end = clock();
-    double dur = 1000.0*(end - start)/CLOCKS_PER_SEC;
-    printf("%s: CPU time used (per clock()): %.2f ms\n", __func__, dur);
+    CPU_TIMING_END();
+#endif
+    return gi;
+}
+
+/**
+ * @brief Cubic interpolation in each row first, then linear interpolation in each column
+ * 
+ * @param usi 
+ * @return GrayImage* 
+ */
+GrayImage *usi_itp_row_cubic_col_linear(const USImage *usi)
+{
+#ifdef TIMING
+    CPU_TIMING_START();
+#endif    
+    float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
+    float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
+    float R = usi->radius + usi->depth;
+    float real_h = R - usi->radius * cosf(usi->angle);
+    float real_w = 2 * R * sinf(usi->angle);
+    float center2top = usi->radius * cosf(usi->angle);
+
+    
+    GrayImage *gi = malloc(sizeof (GrayImage));
+    gi->height = (int)ceilf(usi->spl * real_h / usi->depth);  /* uses the same sampling interval */
+    gi->width = (int)ceilf(gi->height * real_w / real_h);
+    /* allocates memory and sets all bits to 0 */
+    gi->pixels = calloc(gi->width * gi->height, sizeof (char));
+
+    /* backward map */
+    for(int i = 0; i < gi->height; ++i)
+    {
+        /* from top to bottom */
+        float real_y = center2top + i*s_interval;   /* real-world distance in y direction */
+        for(int j = 0; j < gi->width; ++j)
+        {
+            float real_x = j*s_interval - real_w/2; /* real-world distance in x direction */
+            float theta = atanf(real_x/real_y);
+            float rho = sqrtf(real_x * real_x + real_y * real_y);
+            if( theta >= -usi->angle && theta <= usi->angle 
+                && rho <= R && rho >= usi->radius)
+            {
+                float u = (theta + usi->angle) / a_interval;    /* column index */
+                float v = (rho - usi->radius) / s_interval;     /* row index */
+                int p = (int) u;
+                int q = (int) v;
+                float dx = u - p;
+                float dy = v - q;
+
+                float f_2x4[2][4];
+                if(0 > usi_get_patch(usi, p-1, q-1, f_2x4, 4, 2, BORDER_REFLECT))
+                {
+                    DBG_PRINT("Failed to get a 4*2 patch at (%d, %d).\n", p-1, q-1);
+                    gi_free(gi);
+                    gi = NULL;
+                    return gi;
+                }
+
+                // cubic interpolation in x direction
+                float cub_x[2];
+                cub_x[0] = itp_catmull_rom_spline(f_2x4[0], dx);
+                cub_x[1] = itp_catmull_rom_spline(f_2x4[1], dx);                
+                
+                // linear interpolation in y direction
+                float lin_y = itp_linear(cub_x[0], cub_x[1], dy);
+                
+                lin_y = lin_y < 0.0f ? 0.0f : lin_y;
+                lin_y = lin_y > 255.0f ? 255.0f : lin_y;
+
+                gi->pixels[i*gi->width + j] = (unsigned char) lin_y;
+            }
+        }
+    }
+#ifdef TIMING
+    CPU_TIMING_END();
+#endif
+    return gi;
+}
+
+/**
+ * @brief Cubic interpolation in each column first, then linear interpolation in each row 
+ * 
+ * @param usi 
+ * @return GrayImage* 
+ */
+GrayImage *usi_itp_col_cubic_row_linear(const USImage *usi)
+{
+#ifdef TIMING
+    CPU_TIMING_START();
+#endif    
+    float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
+    float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
+    float R = usi->radius + usi->depth;
+    float real_h = R - usi->radius * cosf(usi->angle);
+    float real_w = 2 * R * sinf(usi->angle);
+    float center2top = usi->radius * cosf(usi->angle);
+
+    
+    GrayImage *gi = malloc(sizeof (GrayImage));
+    gi->height = (int)ceilf(usi->spl * real_h / usi->depth);  /* uses the same sampling interval */
+    gi->width = (int)ceilf(gi->height * real_w / real_h);
+    /* allocates memory and sets all bits to 0 */
+    gi->pixels = calloc(gi->width * gi->height, sizeof (char));
+
+    /* backward map */
+    for(int i = 0; i < gi->height; ++i)
+    {
+        /* from top to bottom */
+        float real_y = center2top + i*s_interval;   /* real-world distance in y direction */
+        for(int j = 0; j < gi->width; ++j)
+        {
+            float real_x = j*s_interval - real_w/2; /* real-world distance in x direction */
+            float theta = atanf(real_x/real_y);
+            float rho = sqrtf(real_x * real_x + real_y * real_y);
+            if( theta >= -usi->angle && theta <= usi->angle 
+                && rho <= R && rho >= usi->radius)
+            {
+                float u = (theta + usi->angle) / a_interval;    /* column index */
+                float v = (rho - usi->radius) / s_interval;     /* row index */
+                int p = (int) u;
+                int q = (int) v;
+                float dx = u - p;
+                float dy = v - q;
+
+                float f_4x2[4][2];
+                if(0 > usi_get_patch(usi, p-1, q-1, f_4x2, 2, 4, BORDER_REFLECT))
+                {
+                    DBG_PRINT("Failed to get a 2*4 patch at (%d, %d).\n", p-1, q-1);
+                    gi_free(gi);
+                    gi = NULL;
+                    return gi;
+                }
+                // transpose f_4x2                
+                float traned[2][4];
+                for(int m = 0; m < 4; ++m)
+                    for(int n = 0; n < 2; ++n)
+                        traned[n][m] = f_4x2[m][n];
+
+                // cubic interpolation in y direction
+                float cub_y[2];
+                cub_y[0] = itp_catmull_rom_spline(traned[0], dy);
+                cub_y[1] = itp_catmull_rom_spline(traned[1], dy);
+                
+                // linear interpolation in x direction
+                float lin_x = itp_linear(cub_y[0], cub_y[1], dx);
+                lin_x = lin_x < 0.0f ? 0.0f : lin_x;
+                lin_x = lin_x > 255.0f ? 255.0f : lin_x;
+
+                gi->pixels[i*gi->width + j] = (unsigned char) lin_x;
+            }
+        }
+    }
+#ifdef TIMING
+    CPU_TIMING_END();
+#endif
+    return gi;
+}
+
+/**
+ * @brief Linear interpolation in each row first, then cubic interpolation in each column
+ * 
+ * @param usi 
+ * @return GrayImage* 
+ */
+GrayImage *usi_itp_row_linear_col_cubic(const USImage *usi)
+{
+#ifdef TIMING
+    CPU_TIMING_START();
+#endif    
+    float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
+    float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
+    float R = usi->radius + usi->depth;
+    float real_h = R - usi->radius * cosf(usi->angle);
+    float real_w = 2 * R * sinf(usi->angle);
+    float center2top = usi->radius * cosf(usi->angle);
+
+    
+    GrayImage *gi = malloc(sizeof (GrayImage));
+    gi->height = (int)ceilf(usi->spl * real_h / usi->depth);  /* uses the same sampling interval */
+    gi->width = (int)ceilf(gi->height * real_w / real_h);
+    /* allocates memory and sets all bits to 0 */
+    gi->pixels = calloc(gi->width * gi->height, sizeof (char));
+
+    /* backward map */
+    for(int i = 0; i < gi->height; ++i)
+    {
+        /* from top to bottom */
+        float real_y = center2top + i*s_interval;   /* real-world distance in y direction */
+        for(int j = 0; j < gi->width; ++j)
+        {
+            float real_x = j*s_interval - real_w/2; /* real-world distance in x direction */
+            float theta = atanf(real_x/real_y);
+            float rho = sqrtf(real_x * real_x + real_y * real_y);
+            if( theta >= -usi->angle && theta <= usi->angle 
+                && rho <= R && rho >= usi->radius)
+            {
+                float u = (theta + usi->angle) / a_interval;    /* column index */
+                float v = (rho - usi->radius) / s_interval;     /* row index */
+                int p = (int) u;
+                int q = (int) v;
+                float dx = u - p;
+                float dy = v - q;
+
+                float f_4x2[4][2];
+                if(0 > usi_get_patch(usi, p-1, q-1, f_4x2, 2, 4, BORDER_REFLECT))
+                {
+                    DBG_PRINT("Failed to get a 2*4 patch at (%d, %d).\n", p-1, q-1);
+                    gi_free(gi);
+                    gi = NULL;
+                    return gi;
+                }
+
+                // linear interpolation in x direction
+                float lin_x[4];
+                for(int n = 0; n < 4; ++n)
+                    lin_x[n] = itp_linear(f_4x2[n][0], f_4x2[n][1], dx);
+                
+                // cubic interpolation in y direction
+                float cub_y = itp_catmull_rom_spline(lin_x, dy);
+                cub_y = cub_y < 0.0f ? 0.0f : cub_y;
+                cub_y = cub_y > 255.0f ? 255.0f : cub_y;
+
+                gi->pixels[i*gi->width + j] = (unsigned char) cub_y;
+            }
+        }
+    }
+#ifdef TIMING
+    CPU_TIMING_END();
 #endif
     return gi;
 }
 
 GrayImage *usi_itp_bicubic_catmull_rom_spline(const USImage *usi)
 {
-    #ifdef TIMING
-    clock_t start = clock();
+#ifdef TIMING
+    CPU_TIMING_START();
 #endif    
     float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
     float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
@@ -459,9 +702,7 @@ GrayImage *usi_itp_bicubic_catmull_rom_spline(const USImage *usi)
         }
     }
 #ifdef TIMING
-    clock_t end = clock();
-    double dur = 1000.0*(end - start)/CLOCKS_PER_SEC;
-    printf("%s: CPU time used (per clock()): %.2f ms\n", __func__, dur);
+    CPU_TIMING_END();
 #endif
     return gi;
 }
@@ -476,7 +717,7 @@ static inline float dot(float a[], float b[], size_t n)
 GrayImage *usi_itp_bicubic(const USImage *usi)
 {
 #ifdef TIMING
-    clock_t start = clock();
+    CPU_TIMING_START();
 #endif    
     float s_interval = usi->depth / (usi->spl - 1);  /* sampling interval */
     float a_interval = 2 * usi->angle / (usi->line_cnt - 1);  /* angle interval */
@@ -627,9 +868,7 @@ GrayImage *usi_itp_bicubic(const USImage *usi)
 // #endif
 
 #ifdef TIMING
-    clock_t end = clock();
-    double dur = 1000.0*(end - start)/CLOCKS_PER_SEC;
-    printf("%s: CPU time used (per clock()): %.2f ms\n", __func__, dur);
+    CPU_TIMING_END();
 #endif
     return gi;
 }
@@ -719,6 +958,9 @@ int usi_itp_png_ocl(const USImage *usi, const char *pngname, GrayImage *(*usi_it
 
 GrayImage *usi_itp_nearest_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
 {
+#ifdef TIMING
+    WALL_TIMING_START();
+#endif
     GrayImage *gi = NULL;
     
     cl_int status;
@@ -849,11 +1091,17 @@ RELEASE_ALL:
 // FREE_GPUS:
 //     free(gpus);
 
+#ifdef TIMING
+    WALL_TIMING_END();
+#endif
     return gi;
 }
 
 GrayImage *usi_itp_bilinear_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
 {
+#ifdef TIMING
+    WALL_TIMING_START();
+#endif
     GrayImage *gi = NULL;
     
     cl_int status;
@@ -953,11 +1201,18 @@ RELEASE_ALL:
     clReleaseMemObject(buf_usi_pixels);
     clReleaseKernel(kernel);
 
+#ifdef TIMING
+    WALL_TIMING_END();
+#endif
+
     return gi;
 }
 
 GrayImage *usi_itp_bicubic_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
 {
+#ifdef TIMING
+    WALL_TIMING_START();
+#endif
     GrayImage *gi = NULL;
     
     cl_int status;
@@ -1057,11 +1312,18 @@ RELEASE_ALL:
     clReleaseMemObject(buf_usi_pixels);
     clReleaseKernel(kernel);
 
+#ifdef TIMING
+    WALL_TIMING_END();
+#endif
+
     return gi;
 }
 
 GrayImage *usi_itp_col_linear_row_cubic_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
 {
+#ifdef TIMING
+    WALL_TIMING_START();
+#endif
     GrayImage *gi = NULL;
     
     cl_int status;
@@ -1161,12 +1423,19 @@ RELEASE_ALL:
     clReleaseMemObject(buf_usi_pixels);
     clReleaseKernel(kernel);
 
+#ifdef TIMING
+    WALL_TIMING_END();
+#endif
+
     return gi;
 }
 
 GrayImage *usi_itp_bicubic_catmull_rom_spline_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
 {
-        GrayImage *gi = NULL;
+#ifdef TIMING
+    WALL_TIMING_START();
+#endif
+    GrayImage *gi = NULL;
     
     cl_int status;
     
@@ -1264,6 +1533,10 @@ RELEASE_ALL:
     clReleaseMemObject(buf_gi_pixels);
     clReleaseMemObject(buf_usi_pixels);
     clReleaseKernel(kernel);
+
+#ifdef TIMING
+    WALL_TIMING_END();
+#endif
 
     return gi;
 }
