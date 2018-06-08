@@ -1028,7 +1028,7 @@ GrayImage *usi_itp_nearest_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
 
     // Define an index space of work-items for execution.
 	// A work-group size is not required, but can be used.
-	size_t global_size[2] = {gi->height, gi->width}, local_size[1];
+	size_t global_size[2] = {gi->height, gi->width}, local_size[2] ;
     // global_id range should equal to the length of subsums
 	
     // number-of-groups: global_size / local_size
@@ -1145,7 +1145,7 @@ GrayImage *usi_itp_bilinear_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
 
     // Define an index space of work-items for execution.
 	// A work-group size is not required, but can be used.
-	size_t global_size[2] = {gi->height, gi->width}, local_size[1];
+	size_t global_size[2] = {gi->height, gi->width}, local_size[2] ;
     // global_id range should equal to the length of subsums
 	
     // number-of-groups: global_size / local_size
@@ -1256,7 +1256,7 @@ GrayImage *usi_itp_bicubic_ocl(const USImage *usi, const OCLResrc *ocl_resrc)
 
     // Define an index space of work-items for execution.
 	// A work-group size is not required, but can be used.
-	size_t global_size[2] = {gi->height, gi->width}, local_size[1];
+	size_t global_size[2] = {gi->height, gi->width}, local_size[2] ;
     // global_id range should equal to the length of subsums
 	
     // number-of-groups: global_size / local_size
@@ -1367,7 +1367,7 @@ GrayImage *usi_itp_col_linear_row_cubic_ocl(const USImage *usi, const OCLResrc *
 
     // Define an index space of work-items for execution.
 	// A work-group size is not required, but can be used.
-	size_t global_size[2] = {gi->height, gi->width}, local_size[1];
+	size_t global_size[2] = {gi->height, gi->width}, local_size[2] ;
     // global_id range should equal to the length of subsums
 	
     // number-of-groups: global_size / local_size
@@ -1478,7 +1478,7 @@ GrayImage *usi_itp_bicubic_catmull_rom_spline_ocl(const USImage *usi, const OCLR
 
     // Define an index space of work-items for execution.
 	// A work-group size is not required, but can be used.
-	size_t global_size[2] = {gi->height, gi->width}, local_size[1];
+	size_t global_size[2] = {gi->height, gi->width}, local_size[2] ;
     // global_id range should equal to the length of subsums
 	
     // number-of-groups: global_size / local_size
