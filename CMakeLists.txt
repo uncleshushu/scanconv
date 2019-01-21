@@ -7,15 +7,27 @@ set(PROJECT_VERSION_PATCH 0)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED on)   # requires C11
+add_compile_options(-Wall)
 
-option(DEBUG "Debug version" ON)
-option(RELEASE "Release version" OFF)
+set(default_build_type "Release")
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+    set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
+        STRING "Choose the type of build." FORCE)
+    # Set the possible values of build type for cmake-gui
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+option(NDEBUG "Disable debug print" ON)
 option(TIMING "Enable timing" ON)
 option(USE_OPENCL "Use OpenCL" ON)
 
-if(RELEASE)
-    set(DEBUG OFF)    
-endif(RELEASE)
+if(${CMAKE_BUILD_TYPE} MATCHES "Debug" )
+    set(NDEBUG OFF)
+    remove_definitions(-DNDEBUG)
+endif()
 
 configure_file(config.h.in ${PROJECT_SOURCE_DIR}/config.h)
 
@@ -39,6 +51,7 @@ if(UNIX)
     target_link_libraries(${PROJECT_NAME} m)
 endif(UNIX)
 
+
 set(files2copy
     image.dat
     interpolate.cl
@@ -47,20 +60,16 @@ set(files2copy
     profile.py)
 
 if(${CMAKE_GENERATOR} MATCHES "Visual Studio")
-    if(DEBUG)
-        foreach(f ${files2copy})
-            file(COPY ${f} DESTINATION "${CMAKE_BINARY_DIR}/Debug")
-        endforeach(f)
-    endif(DEBUG)
-    if(RELEASE)
-        foreach(f ${files2copy})
-            file(COPY ${f} DESTINATION "${CMAKE_BINARY_DIR}/Release")
-        endforeach(f)
-    endif(RELEASE)
+    if(NDEBUG)
+        set(copy_dest ${CMAKE_BINARY_DIR}"${CMAKE_BINARY_DIR}/Release")
+    else(NDEBUG)
+        set(copy_dest ${CMAKE_BINARY_DIR}"${CMAKE_BINARY_DIR}/Debug")
+    endif(NDEBUG)
 else()
-    foreach(f ${files2copy})
-        file(COPY ${f} DESTINATION ${CMAKE_BINARY_DIR})
-    endforeach(f)
+    set(copy_dest ${CMAKE_BINARY_DIR})
 endif()
 
+foreach(f ${files2copy})
+    file(COPY ${f} DESTINATION ${copy_dest})
+endforeach(f)
 

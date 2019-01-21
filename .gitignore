@@ -1,16 +1,18 @@
 # cmake build directories
 **/build*
 
-###### project submission files ######
+#project submission files
 答辩.jpg
 *.zip
 *.doc*
 *.ppt*
-##############################
 
-##### auto-generated configuration files #####
+# mypy caches
+.mypy_cache/
+
+# auto-generated configuration files
 config.h
-##############################################
+
 
 ###### MS-Office ######
 *.tmp

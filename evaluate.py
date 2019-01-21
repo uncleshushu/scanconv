@@ -1,31 +1,37 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import numpy as np
-from skimage.measure import compare_mse, compare_psnr, compare_ssim
 import math
 
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import numpy as np
+from skimage.measure import compare_mse, compare_psnr, compare_ssim
+
+
 def mse(img1, img2):
-    return np.mean( (img1 - img2) ** 2 )
+    return np.mean((img1 - img2)**2)
+
 
 def psnr(img1, img2):
-    mse = np.mean( (img1 - img2) ** 2 )
+    mse = np.mean((img1 - img2)**2)
     if mse == 0:
         return 100
     PIXEL_MAX = 255.0
     return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
-imgs = dict.fromkeys(['bicubic', 'bicubic_ocl', 'bicubic_catmull_rom_spline_ocl','col_linear_row_cubic_ocl', 'bilinear_ocl', 'nearest_ocl'], None)
+
+imgs = dict.fromkeys([
+    'bicubic', 'bicubic_ocl', 'bicubic_catmull_rom_spline_ocl',
+    'col_linear_row_cubic_ocl', 'bilinear_ocl', 'nearest_ocl'
+], None)
 
 for k in imgs.keys():
-    imgs[k] = mpimg.imread(k+'.png')
-
+    imgs[k] = mpimg.imread(k + '.png')
 
 mses = {}
 psnrs = {}
 ssims = {}
-for k,v in imgs.items():
+for k, v in imgs.items():
     if k != 'bicubic':
         mses[k] = compare_mse(imgs['bicubic'], v)
         psnrs[k] = compare_psnr(imgs['bicubic'], v)
@@ -37,11 +43,11 @@ print("SSIM", ssims)
 
 fig_1 = plt.figure('results', figsize=(15, 7))
 
-row_cnt = math.ceil(len(imgs)/3.0)
+row_cnt = math.ceil(len(imgs) / 3.0)
 for i, (k, v) in enumerate(imgs.items()):
-    p = plt.subplot2grid((row_cnt, 3), (i//3, i%3))
+    p = plt.subplot2grid((row_cnt, 3), (i // 3, i % 3))
     p.set_title(k)
-    p.imshow(v,cmap='Greys_r')
+    p.imshow(v, cmap='Greys_r')
     p.axis('off')
 
 fig_1.tight_layout()
@@ -53,9 +59,9 @@ for i, (name, data) in enumerate(measures.items()):
     ax = plt.subplot2grid((3, 1), (i, 0))
     ax.set_title(name)
     ax.barh(list(data.keys()), list(data.values()), alpha=0.8)
-    # ax.barh(range(len(data)), list(data.values()), alpha=0.8, tick_label=data.keys())
-    for k,v in data.items():    
-        ax.text(v, k, '%.3g' % v, ha='left', va= 'center')
+
+    for k, v in data.items():
+        ax.text(v, k, '%.3g' % v, ha='left', va='center')
 
 fig_2.tight_layout()
 

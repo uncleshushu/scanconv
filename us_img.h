@@ -7,12 +7,12 @@
  */
 typedef struct
 {
-    int line_cnt;   /* number of lines scanned */
-    int spl;        /* number of sample points per line */
+    int line_cnt; /* number of lines scanned */
+    int spl;      /* number of sample points per line */
     float depth;
     float angle;
     float radius;
-    float *pixels;  /* [line_cnt][spl] */
+    float *pixels; /* [line_cnt][spl] */
 } USImage;
 
 typedef struct
@@ -20,13 +20,12 @@ typedef struct
     int width;
     int height;
     unsigned char *pixels;
-}GrayImage;
-
+} GrayImage;
 
 USImage *usi_load(const char *filename);
 
-int gi_write_png(const char* filename, const GrayImage *gi);
-int gi_write_bmp(const char* filename, const GrayImage *gi);
+int gi_write_png(const char *filename, const GrayImage *gi);
+int gi_write_bmp(const char *filename, const GrayImage *gi);
 
 void usi_free(USImage *usi);
 
@@ -104,4 +103,4 @@ GrayImage *usi_itp_bicubic_conv_ocl(const USImage *usi, const OCLResrc *ocl_resr
 int usi_itp_png_ocl(const USImage *usi, const char *fileout, GrayImage *(*usi_itp)(const USImage *, const OCLResrc *), const OCLResrc *ocl_resrc);
 #endif
 
-#endif /* US_IMG_H*/
+#endif /* #ifndef US_IMG_H */
