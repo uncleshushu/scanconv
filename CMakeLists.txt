@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(usi_itp_ocl C)
+project(scanconv C)
 
 set(PROJECT_VERSION_MAJOR 1)
 set(PROJECT_VERSION_MINOR 3)
-set(PROJECT_VERSION_PATCH 0)
+set(PROJECT_VERSION_PATCH 1)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED on)   # requires C11
@@ -20,7 +20,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-option(NDEBUG "Disable debug print" ON)
+option(NDEBUG "Disable debug print and assert" ON)
 option(TIMING "Enable timing" ON)
 option(USE_OPENCL "Use OpenCL" ON)
 
@@ -61,9 +61,9 @@ set(files2copy
 
 if(${CMAKE_GENERATOR} MATCHES "Visual Studio")
     if(NDEBUG)
-        set(copy_dest ${CMAKE_BINARY_DIR}"${CMAKE_BINARY_DIR}/Release")
+        set(copy_dest "${CMAKE_BINARY_DIR}/Release")
     else(NDEBUG)
-        set(copy_dest ${CMAKE_BINARY_DIR}"${CMAKE_BINARY_DIR}/Debug")
+        set(copy_dest "${CMAKE_BINARY_DIR}/Debug")
     endif(NDEBUG)
 else()
     set(copy_dest ${CMAKE_BINARY_DIR})

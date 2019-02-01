@@ -1,8 +1,11 @@
 # cmake build directories
-**/build*
+# build direcotory
+build/
+
+# TODO list
+TODO.md
 
 #project submission files
-答辩.jpg
 *.zip
 *.doc*
 *.ppt*

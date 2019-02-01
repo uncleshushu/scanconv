@@ -1,12 +1,14 @@
-
 typedef enum {BORDER_REFLECT} border_t;
+
 /**
- * @brief 
+ * @brief
  * 
- * @param usi 
+ * @param usi_pixels
+ * @param line_cnt number of scanlines
+ * @param spl sampled data points per line
  * @param left column index of the top-left pixel of the patch
  * @param top row index of the top-left pixel of the patch
- * @param patch 
+ * @param patch the patch to set
  * @param w 
  * @param h 
  * @param border_type 
